@@ -1,54 +1,40 @@
 module Main where
 
 import Data.List (foldl')
+import qualified Data.Map as M
+import Data.Map
 
 type Cup = Int
 type CurrCup = Int
-type Cups = [Cup]
+type Cups = M.Map Int Int
 
 len = 1000000
 zipC = [0..len]
 
-insert3Cup :: Cups -> Cup -> Cups -> Cups
---insert3Cup _ _ [] = []
-insert3Cup cups3 desC xs = concat [f x' | x' <- xs]
- where
-  f x | x == desC = x : cups3
-      | otherwise = [x]
- 
-playGame' :: ((CurrCup, Int), Cups) -> ((CurrCup, Int), Cups)
-playGame' ((c,i),xs) = ((i,c),filter (>30) xs)
+playGame :: (CurrCup, Cups) -> (CurrCup, Cups)
 
-playGame :: ((CurrCup, Int), Cups) -> ((CurrCup, Int), Cups)
-playGame ((curr,currId), xs) = ((curr',(currId' + 1) `mod` len), xs'')
-  where
-   
-    --currId = fst $ head $ filter (\x -> snd x == curr) (zip zipC xs)
-    --curr = xs !! currId
-    threeCups = [ xs !! ((currId + id) `rem` len) | id <-[1..3]]
-    d' = [ x | x <- xs, x < curr, x /= head threeCups, x /= threeCups !! 1, x /= threeCups !! 2 ]
-    xs' = filter (\x -> x /= head threeCups && x /= threeCups !! 1 && x/= threeCups !! 2) xs
-    maxCup = foldl' max 0 [ x | x <- xs', x > curr]
-    destinationCup = if null (take 1 d') then maxCup
-                     else foldl' max 0 d'
-    desId = fst $ head $ filter (\x -> snd x == destinationCup) (zip zipC xs')
-    
-    --fp = (takeWhile (/=destinationCup) xs' ) ++ [destinationCup]
-    --sp = tail $ takeFrom (==destinationCup) xs'
-    --xs'' = fp ++ threeCups ++ sp
-    xs'' = seq xs' $ insert3Cup threeCups destinationCup xs'
-    currId' = fst $ head $ filter (\x -> snd x == curr) (zip zipC xs'')
-    curr' = xs'' !! ((currId' + 1) `rem` len)
+playGame (curr, cups) = (cups'' ! curr, cups'')
+  where cup1 = cups ! curr
+        cup2 = cups ! cup1
+        cup3 = cups ! cup2
+        cupN = cups ! cup3
+        cups' = M.insert curr cupN cups
+        destCup = head $ [ x | x <- [curr-1,curr-2..1] ++ [len,len-1..1], x /= cup1, x/=cup2,x/=cup3 ]
+        m = cups' ! destCup
+        cups'' = M.insert cup3 m $ M.insert cup2 cup3 $ M.insert cup1 cup2 $ M.insert destCup cup1 cups'
  
-applyN :: ((CurrCup, Int), Cups) -> Int -> ((CurrCup, Int), Cups)
-applyN xs 10000000 = xs
-applyN xs depth = applyN (playGame' xs) (depth +1)
+applyN :: (CurrCup, Cups) -> Int -> (CurrCup, Cups)
+applyN xs 0 = xs
+applyN xs depth = applyN (playGame xs) (depth -1)
 
 main :: IO ()
 main = do
-  let array = [3,8,9,1,2,5,4,6,7] ++ [10..len]
-  let current = 3
-  let result = snd $ applyN ((current, 0), array) 1
-  let id = fst $ head $ filter (\x -> snd x == 1) (zip [0..] result)
-  print $ result !! ((id+1) `mod` len)
-  print $ result !! ((id+2) `mod` len)
+  let array = [9,6,2,7,1,3,8,5,4] ++ [10..len]
+  let current = 9
+  let m' = M.fromList $ zip array (tail array) ++ [(last array, head array)]
+
+  let result = snd $ applyN (current, m') 10000000
+  --print result
+  let r1 = result ! 1
+  let r2 = result ! r1
+  print $ [r1, r2, r1*r2]
